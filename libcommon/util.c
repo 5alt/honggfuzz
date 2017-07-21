@@ -46,7 +46,7 @@
 
 
 int util_CheckWord(uint8_t c, const char* whitelist){
-    if( c && ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || strchr(whitelist, c) || (c >= '0' && c <= '9'))){
+    if( (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || strchr(whitelist, c) || (c >= '0' && c <= '9') ){
         return 1;
     }else{
         return 0;
@@ -58,16 +58,16 @@ uint8_t *util_FindWord(const uint8_t* src, size_t* sz, const char* whitelist){
     uint8_t* pointer = src;
 
     if( util_CheckWord(src[0], whitelist) ){
-        while( util_CheckWord(src[index], whitelist) ) index++;
+        while( src[index] && util_CheckWord(src[index], whitelist) ) index++;
         *sz = index;
         return src;
     }else{
-        while( !util_CheckWord(*pointer, whitelist) ) pointer++;
+        while( *pointer && !util_CheckWord(*pointer, whitelist) ) pointer++;
         if(!*pointer){
             *sz = 0;
             return src;
         }
-        while( util_CheckWord(pointer[index], whitelist) ) index++;
+        while( pointer[index] && util_CheckWord(pointer[index], whitelist) ) index++;
         *sz = index;
         return pointer;
     }
