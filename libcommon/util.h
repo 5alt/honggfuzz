@@ -83,6 +83,10 @@ static inline uint8_t ATOMIC_BTS(uint8_t * addr, size_t offset)
     return oldbit;
 }
 
+extern int util_CheckWord(uint8_t c, const char* whitelist);
+
+extern uint8_t *util_FindWord(const uint8_t* src, size_t* sz, const char* whitelist);
+
 extern void *util_Malloc(size_t sz);
 
 extern void *util_Calloc(size_t sz);

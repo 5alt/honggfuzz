@@ -35,6 +35,7 @@
 #include "libcommon/log.h"
 #include "libcommon/util.h"
 
+
 static inline void mangle_Overwrite(fuzzer_t * fuzzer, const uint8_t * src, size_t off, size_t sz)
 {
     size_t maxToCopy = fuzzer->dynamicFileSz - off;
@@ -78,6 +79,25 @@ static void mangle_Inflate(honggfuzz_t * hfuzz, fuzzer_t * fuzzer, size_t off, s
 
     fuzzer->dynamicFileSz += len;
     mangle_Move(fuzzer, off, off + len, fuzzer->dynamicFileSz);
+}
+
+static inline void mangle_Replace(honggfuzz_t * hfuzz, fuzzer_t * fuzzer, const uint8_t * src, size_t src_sz, size_t off, size_t off_sz)
+{
+    if(src_sz <= 0 || off_sz <= 0){
+        return;
+    }
+
+    if(src_sz == off_sz){
+        mangle_Overwrite(fuzzer, src, off, src_sz);
+    }
+    else if(src_sz < off_sz){
+        mangle_Overwrite(fuzzer, src, off, src_sz);
+        mangle_Move(fuzzer, off + off_sz, off + src_sz, fuzzer->dynamicFileSz);
+        fuzzer->dynamicFileSz -= off_sz - src_sz;
+    }else{
+        mangle_Inflate(hfuzz, fuzzer, off, src_sz);
+        mangle_Overwrite(fuzzer, src, off, src_sz);
+    }
 }
 
 static void mangle_MemMove(honggfuzz_t * hfuzz UNUSED, fuzzer_t * fuzzer)
@@ -533,6 +553,48 @@ static void mangle_InsertRnd(honggfuzz_t * hfuzz UNUSED, fuzzer_t * fuzzer)
     util_rndBuf(&fuzzer->dynamicFile[off], len);
 }
 
+static void mangle_DictionaryReplace(honggfuzz_t * hfuzz UNUSED, fuzzer_t * fuzzer)
+{
+    if (hfuzz->dictionaryCnt == 0) {
+        mangle_Bit(hfuzz, fuzzer);
+        return;
+    }
+
+    uint64_t choice = util_rndGet(0, hfuzz->dictionaryCnt - 1);
+    struct strings_t *str = TAILQ_FIRST(&hfuzz->dictq);
+    for (uint64_t i = 0; i < choice; i++) {
+        str = TAILQ_NEXT(str, pointers);
+    }
+
+    const char* whitelist = ".-";
+
+    size_t count = 0;
+    uint8_t* ptr = fuzzer->dynamicFile;
+    size_t s;
+    while(ptr < fuzzer->dynamicFile + fuzzer->dynamicFileSz){
+        ptr = util_FindWord( ptr, &s, whitelist) + s;
+        if(s){
+            count += 1;
+        }else{
+            break;
+        }
+    }
+
+    if(!count) return;
+
+    size_t rnd = util_rndGet(0, count - 1);
+    ptr = fuzzer->dynamicFile;
+    for(size_t i = 0; i < rnd; i++){
+        ptr = util_FindWord( ptr, &s, whitelist) + s;
+    }
+
+    size_t off = util_FindWord(ptr, &s, whitelist) - fuzzer->dynamicFile;
+
+    mangle_Replace(hfuzz, fuzzer, (const uint8_t*)str->s, str->len, off, s);
+    
+}
+
+
 void mangle_mangleContent(honggfuzz_t * hfuzz, fuzzer_t * fuzzer)
 {
     if (fuzzer->flipRate == 0.0f) {
@@ -553,15 +615,16 @@ void mangle_mangleContent(honggfuzz_t * hfuzz, fuzzer_t * fuzzer)
     static void (*const mangleFuncs[]) (honggfuzz_t * hfuzz, fuzzer_t * fuzzer) = {
     /*  *INDENT-OFF* */
         mangle_Byte,
-        mangle_Bit,
+        //mangle_Bit,
         mangle_Bytes,
-        mangle_Magic,
+        //mangle_Magic,
         mangle_IncByte,
         mangle_DecByte,
         mangle_NegByte,
         mangle_AddSub,
-        mangle_Dictionary,
+        //mangle_Dictionary,
         mangle_DictionaryInsert,
+        mangle_DictionaryReplace,
         mangle_MemMove,
         mangle_MemSet,
         mangle_Random,
@@ -573,11 +636,46 @@ void mangle_mangleContent(honggfuzz_t * hfuzz, fuzzer_t * fuzzer)
     /* *INDENT-ON* */
     };
 
+    static uint64_t mangleFuncsProbability[] = {
+    /*  *INDENT-OFF* */
+        1, // mangle_Byte
+       //1, // mangle_Bit
+        1, // mangle_Bytes
+        //1, // mangle_Magic
+        1, // mangle_IncByte
+        1, // mangle_DecByte
+        1, // mangle_NegByte
+        1, // mangle_AddSub
+        //5, // mangle_Dictionary
+        3, // mangle_DictionaryInsert
+        8, // mangle_DictionaryReplace
+        1, // mangle_MemMove
+        1, // mangle_MemSet
+        1, // mangle_Random
+        2, // mangle_CloneByte
+        1, // mangle_Expand
+        1, // mangle_Shrink
+        2, // mangle_InsertRnd
+        1, // mangle_Resize
+    /* *INDENT-ON* */
+    };
+    uint64_t total = 0;
+    uint64_t size = sizeof(mangleFuncsProbability)/sizeof(total);
+    for(size_t i = 0; i < size; i++){
+        total += mangleFuncsProbability[i];
+    }
+
     /* Max number of stacked changes is 6 */
     uint64_t changesCnt = util_rndGet(1, 6);
 
     for (uint64_t x = 0; x < changesCnt; x++) {
-        uint64_t choice = util_rndGet(0, ARRAYSIZE(mangleFuncs) - 1);
-        mangleFuncs[choice] (hfuzz, fuzzer);
+        uint64_t choice = util_rndGet(1, total);
+        for(size_t i = 0; i < sizeof(mangleFuncsProbability); i++){
+            choice -= mangleFuncsProbability[i];
+            if(choice <= 0){
+                mangleFuncs[i] (hfuzz, fuzzer);
+                break;
+            }
+        }
     }
 }
