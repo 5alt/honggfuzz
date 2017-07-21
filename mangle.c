@@ -670,7 +670,7 @@ void mangle_mangleContent(honggfuzz_t * hfuzz, fuzzer_t * fuzzer)
 
     for (uint64_t x = 0; x < changesCnt; x++) {
         uint64_t choice = util_rndGet(1, total);
-        for(size_t i = 0; i < sizeof(mangleFuncsProbability); i++){
+        for(size_t i = 0; i < size; i++){
             choice -= mangleFuncsProbability[i];
             if(choice <= 0){
                 mangleFuncs[i] (hfuzz, fuzzer);
