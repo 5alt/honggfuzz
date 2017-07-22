@@ -95,7 +95,7 @@ static inline void mangle_Replace(honggfuzz_t * hfuzz, fuzzer_t * fuzzer, const 
         mangle_Move(fuzzer, off + off_sz, off + src_sz, fuzzer->dynamicFileSz);
         fuzzer->dynamicFileSz -= off_sz - src_sz;
     }else{
-        mangle_Inflate(hfuzz, fuzzer, off, src_sz);
+        mangle_Inflate(hfuzz, fuzzer, off, src_sz - off_sz);
         mangle_Overwrite(fuzzer, src, off, src_sz);
     }
 }
@@ -660,7 +660,7 @@ void mangle_mangleContent(honggfuzz_t * hfuzz, fuzzer_t * fuzzer)
     /* *INDENT-ON* */
     };
     uint64_t total = 0;
-    uint64_t size = sizeof(mangleFuncsProbability)/sizeof(total);
+    uint64_t size = ARRAYSIZE(mangleFuncsProbability);
     for(size_t i = 0; i < size; i++){
         total += mangleFuncsProbability[i];
     }
