@@ -85,7 +85,7 @@ static inline uint8_t ATOMIC_BTS(uint8_t * addr, size_t offset)
 
 extern int util_CheckWord(uint8_t c, const char* whitelist);
 
-extern uint8_t *util_FindWord(const uint8_t* src, size_t* sz, const char* whitelist);
+extern uint8_t *util_FindWord(const uint8_t* src, size_t* sz, const char* whitelist, const char* stop);
 
 extern void *util_Malloc(size_t sz);
 

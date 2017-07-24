@@ -572,7 +572,7 @@ static void mangle_DictionaryReplace(honggfuzz_t * hfuzz UNUSED, fuzzer_t * fuzz
     uint8_t* ptr = fuzzer->dynamicFile;
     size_t s;
     while(ptr < fuzzer->dynamicFile + fuzzer->dynamicFileSz){
-        ptr = util_FindWord( ptr, &s, whitelist) + s;
+        ptr = util_FindWord( ptr, &s, whitelist, fuzzer->dynamicFile + fuzzer->dynamicFileSz) + s;
         if(s){
             count += 1;
         }else{
@@ -585,10 +585,10 @@ static void mangle_DictionaryReplace(honggfuzz_t * hfuzz UNUSED, fuzzer_t * fuzz
     size_t rnd = util_rndGet(0, count - 1);
     ptr = fuzzer->dynamicFile;
     for(size_t i = 0; i < rnd; i++){
-        ptr = util_FindWord( ptr, &s, whitelist) + s;
+        ptr = util_FindWord( ptr, &s, whitelist, fuzzer->dynamicFile + fuzzer->dynamicFileSz) + s;
     }
 
-    size_t off = util_FindWord(ptr, &s, whitelist) - fuzzer->dynamicFile;
+    size_t off = util_FindWord(ptr, &s, whitelist, fuzzer->dynamicFile + fuzzer->dynamicFileSz) - fuzzer->dynamicFile;
 
     mangle_Replace(hfuzz, fuzzer, (const uint8_t*)str->s, str->len, off, s);
     

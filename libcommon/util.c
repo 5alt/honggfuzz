@@ -53,21 +53,21 @@ int util_CheckWord(uint8_t c, const char* whitelist){
     }
 }
 
-uint8_t *util_FindWord(const uint8_t* src, size_t* sz, const char* whitelist){
+uint8_t *util_FindWord(const uint8_t* src, size_t* sz, const char* whitelist, const char* stop){
     size_t index = 1;
     uint8_t* pointer = src;
 
     if( util_CheckWord(src[0], whitelist) ){
-        while( src[index] && util_CheckWord(src[index], whitelist) ) index++;
+        while( src + index < stop && util_CheckWord(src[index], whitelist) ) index++;
         *sz = index;
         return src;
     }else{
-        while( *pointer && !util_CheckWord(*pointer, whitelist) ) pointer++;
+        while( pointer < stop && !util_CheckWord(*pointer, whitelist) ) pointer++;
         if(!*pointer){
             *sz = 0;
             return src;
         }
-        while( pointer[index] && util_CheckWord(pointer[index], whitelist) ) index++;
+        while( pointer + index < stop && util_CheckWord(pointer[index], whitelist) ) index++;
         *sz = index;
         return pointer;
     }
